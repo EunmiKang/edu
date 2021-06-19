@@ -20,12 +20,13 @@ public class Education {
 
     @PostPersist
     public void onPostPersist(){
+        /*
         try {
             Thread.currentThread().sleep((long) (400 + Math.random() * 220));
         } catch (InterruptedException e) {
                 e.printStackTrace();
         }
-        
+        */
         EduRegistered eduRegistered = new EduRegistered();
         BeanUtils.copyProperties(this, eduRegistered);
         eduRegistered.publishAfterCommit();

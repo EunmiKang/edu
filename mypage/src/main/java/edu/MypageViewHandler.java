@@ -46,13 +46,7 @@ public class MypageViewHandler {
     public void whenEduRegistered_then_UPDATE_1(@Payload EduRegistered eduRegistered) {
         try {
             if (!eduRegistered.validate()) return;
-            /*
-            try {
-                Thread.currentThread().sleep((long) (400 + Math.random() * 220));
-            } catch (InterruptedException e) {
-                    e.printStackTrace();
-            }
-            */
+            
             System.out.println("\n\n##### listener eduRegistered : " + eduRegistered.toJson() + "\n\n");
 
             // view 객체 조회

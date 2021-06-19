@@ -2,6 +2,7 @@ package edu;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
+
 import java.util.List;
 import java.util.Date;
 
@@ -24,13 +25,11 @@ public class Payment {
         BeanUtils.copyProperties(this, paid);
         paid.publishAfterCommit();
 
-        /*
         try {
             Thread.currentThread().sleep((long) (400 + Math.random() * 220));
         } catch (InterruptedException e) {
                 e.printStackTrace();
         }
-        */
     }
 
     @PostUpdate
