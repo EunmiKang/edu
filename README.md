@@ -60,8 +60,8 @@ git clone https://github.com/EunmiKang/edu.git
 ![image](https://user-images.githubusercontent.com/18115456/122661398-c0994f00-d1c4-11eb-9931-07f59599a9ec.PNG)
 ***
 # 구현
-분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라,구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다
-(각자의 포트넘버는 8081 ~ 8084, 8088 이다)
+분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라,구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다.
+(각자의 포트넘버는 8081 ~ 8084, 8088 이다.)
 ```shell
 cd app
 mvn spring-boot:run
@@ -345,7 +345,7 @@ server:
 
 수강 신청 후 mypage 조회
 ![image](https://user-images.githubusercontent.com/18115456/122647383-fb689c00-d15e-11eb-86a8-37a503a45bfd.PNG)
-<image src="https://user-images.githubusercontent.com/18115456/122647384-fc99c900-d15e-11eb-8e65-7c63617eaf63.PNG" width="60%" />
+<image src="https://user-images.githubusercontent.com/18115456/122647384-fc99c900-d15e-11eb-8e65-7c63617eaf63.PNG" width="50%" />
 *** 
 
 ## 폴리글랏 퍼시스턴스
@@ -405,7 +405,6 @@ AppApplication.applicationContext.getBean(edu.external.PaymentService.class)
 ***
 # 운영  
 ## Deploy/ Pipeline
-각 구현체들은 각자의 source repository 에 구성되었고, 사용한 CI/CD 플랫폼은 Azure를 사용하였으며, pipeline build script 는 각 프로젝트 폴더 이하에 cloudbuild.yml 에 포함되었다.
 
 - git에서 소스 가져오기
 
@@ -432,7 +431,7 @@ cd gateway
 mvn package
 ```
 
-- Docker Image Push/deploy/service 생성 (yml이용)
+- Docker Image Push, deploy/service 생성 (yml 이용)
 
 ```sh
 -- 기본 namespace 설정 (혹시 kubectl 명령어 칠 때 namespace 빼먹을까봐)
@@ -523,6 +522,72 @@ spec:
 ![image]
 
 ***
+## 동기식 호출 / 서킷 브레이킹 / 장애격리
+- 서킷 브레이킹 프레임워크의 선택: Spring FeignClient + Hystrix 옵션을 사용하여 구현함  
+시나리오는 신청서비스(app) -> 결제(payment) 시의 연결을 RESTful Request/Response로 연동하여 구현이 되어있고, 결제 요청이 과도할 경우 CircuitBreaker를 통하여 장애 격리.  
+
+- Hystrix를 설정: 요청처리 쓰레드에서 처리시간이 610 밀리가 넘어서기 시작하여 어느정도 유지되면 CB 회로가 닫히도록 (요청을 빠르게 실패처리, 차단) 설정
+```yml
+# application.yml
+
+hystrix:
+  command:
+    # 전역설정
+    default:
+      execution.isolation.thread.timeoutInMilliseconds: 610
+```	 
+- 피호출 서비스(결제:payment)의 임의 부하 처리 - 400 밀리에서 증감 220 밀리 정도 왔다갔다 하게  
+```java
+# (payment) Payment.java (Entity)
+
+    @PostPersist
+    public void onPostPersist(){  //결제이력을 저장한 후 적당한 시간 끌기
+        ...
+        
+        try {
+            Thread.currentThread().sleep((long) (400 + Math.random() * 220));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+```	 
+- 부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인:  
+- 동시 사용자 100명, 60초 동안 실시
+```
+$ siege -c100 -t60S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status"="EduApplied"}'
+```	 
+![image]
+- 운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 하지만 실패율이 높은 것은 고객 사용성에 있어 좋지 않기 때문에 Retry 설정과 동적 Scale out (replica의 자동적 추가,HPA) 을 통하여 시스템을 확장 해주는 후속처리가 필요.
+***
+
+## Autoscale Out (HPA)
+앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다.
+- 결제 서비스에 리소스에 대한 사용량을 정의한다.
+payment/kubernetes/deployment.yml
+```yml
+  resources:
+    limits:
+      cpu: 500m
+    requests:
+      cpu: 200m
+```
+- 결제 서비스에 대한 replica를 동적으로 늘려주도록 HPA를 설정한다. 설정은 CPU 사용량이 15프로를 넘어서면 replica를 10개까지 늘려준다.
+```
+kubectl autoscale deploy payment --min=1 --max=10 --cpu-percent=15 -n edu
+```	 
+- CB에서 했던 방식대로 워크로드를 2분 동안 걸어준다.
+```
+$ siege -c100 -t120S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status"="EduApplied"}'
+```	
+- 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다.
+```
+kubectl get deploy payment -w
+```	 
+- 어느정도 시간이 흐른 후 (약 30초) 스케일 아웃이 벌어지는 것을 확인할 수 있다.  
+![image]
+- siege 레포트를 보아도 전체적인 성공률이 높아진 것을 확인할 수 있다.  
+![image]
+***
 
 ## Config Map
 
@@ -550,17 +615,11 @@ spec:
     ```sh
     kubectl delete configmap paymenturl
     ```
-    ![image] 
+    ![image]  
 
 ***
 
-## Autoscale (HPA)
-***
-## Circuit Breaker
-
-
-***
-## Zero-Downtime deploy (Readiness Probe)
+## 무정지 재배포 (Zero-Downtime deploy) - Readiness Probe
 - deployment.yml에 정상 적용되어 있는 readinessProbe  
 ```yml
 readinessProbe:
@@ -573,14 +632,16 @@ readinessProbe:
   failureThreshold: 10
 ```
 
-- deployment.yml에서 readiness 설정 제거 후, 배포중 siege 테스트 진행  
-    ![image]
+- deployment.yml에서 readiness 설정 제거 후, 배포중 siege 테스트 진행 - deployment_rm_readiness.yml  
+  ![image]  
+
+배포기간중 Availability 가 평소 100%에서 70% 대로 떨어지는 것을 확인. 원인은 쿠버네티스가 성급하게 새로 올려진 서비스를 READY 상태로 인식하여 서비스 유입을 진행한 것이기 때문. 이를 막기위해 Readiness Probe 를 설정함  
 
 - 다시 readiness 정상 적용 후, Availability 100% 확인  
 ![image]
 
 ***
-## Self-healing (Liveness Probe)
+## Self-healing - Liveness Probe
 
 - deployment.yml에 정상 적용되어 있는 livenessProbe  
 
@@ -596,7 +657,7 @@ livenessProbe:
 ```
 
 - port 및 path 잘못된 값으로 설정해놓은 deploy로 다시 배포 후, retry 시도 확인 (in app 서비스)  
-    - app deploy 재배포 (아래와 같이 잘못된 값으로 설정해놓음)   
+    - app deploy 재배포 (아래와 같이 잘못된 값으로 설정해놓음) - deployment_chg_liveness.yml   
         ![image](https://user-images.githubusercontent.com/18115456/120985806-ed0d9e00-c7b6-11eb-834f-ffd2c627ecf0.png)
 
     - retry 시도 확인  
