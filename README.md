@@ -431,44 +431,43 @@ cd gateway
 mvn package
 ```
 
-- Docker Image Push, deploy/service 생성 (yml 이용)
+- Docker Image Build/Push, deploy/service 생성 (yml 이용)
 
 ```sh
--- 기본 namespace 설정 (혹시 kubectl 명령어 칠 때 namespace 빼먹을까봐)
-kubectl config set-context --current --namespace=edu
-
 -- namespace 생성
 kubectl create ns edu
 
+# app 서비스는 무정지 재배포 테스트를 위해 v1, latest 두 개 버전 build,push
 cd app
 az acr build --registry eunmi --image eunmi.azurecr.io/app:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/app:latest .
 cd kubernetes
-kubectl apply -f deployment.yml
-kubectl apply -f service.yaml
+kubectl create -f deployment.yml -n edu
+kubectl create -f service.yaml -n edu
 
 cd payment
-az acr build --registry eunmi --image eunmi.azurecr.io/payment:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/payment:latest .
 cd kubernetes
-kubectl apply -f deployment.yml
-kubectl apply -f service.yaml
+kubectl create -f deployment.yml -n edu
+kubectl create -f service.yaml -n edu
 
 cd education
-az acr build --registry eunmi --image eunmi.azurecr.io/education:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/education:latest .
 cd kubernetes
-kubectl apply -f deployment.yml
-kubectl apply -f service.yaml
+kubectl create -f deployment.yml -n edu
+kubectl create -f service.yaml -n edu
 
 cd mypage
-az acr build --registry eunmi --image eunmi.azurecr.io/mypage:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/mypage:latest .
 cd kubernetes
-kubectl apply -f deployment.yml
-kubectl apply -f service.yaml
+kubectl create -f deployment.yml -n edu
+kubectl create -f service.yaml -n edu
 
 cd gateway
-az acr build --registry eunmi --image eunmi.azurecr.io/gateway:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/gateway:latest .
 cd kubernetes
-kubectl apply -f deployment.yml -n edu
-kubectl apply -f service.yaml
+kubectl create -f deployment.yml -n edu
+kubectl create -f service.yaml -n edu
 
 ```
 
@@ -494,7 +493,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: skccanticorona.azurecr.io/gateway:latest
+          image: eunmi.azurecr.io/gateway:latest
           ports:
             - containerPort: 8080
 ```	  
@@ -519,7 +518,7 @@ spec:
 ```	  
 
 - deploy 완료  
-![image]
+![image] (https://user-images.githubusercontent.com/18115456/122666713-00266200-d1ea-11eb-83df-abf4127cabde.PNG)  
 
 ***
 ## 동기식 호출 / 서킷 브레이킹 / 장애격리
@@ -529,10 +528,12 @@ spec:
 - Hystrix를 설정: 요청처리 쓰레드에서 처리시간이 610 밀리가 넘어서기 시작하여 어느정도 유지되면 CB 회로가 닫히도록 (요청을 빠르게 실패처리, 차단) 설정
 ```yml
 # application.yml
+feign:
+  hystrix:
+    enabled: true
 
 hystrix:
   command:
-    # 전역설정
     default:
       execution.isolation.thread.timeoutInMilliseconds: 610
 ```	 
@@ -551,12 +552,13 @@ hystrix:
         }
     }
 ```	 
-- 부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인:  
-- 동시 사용자 100명, 60초 동안 실시
+- 부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인 . 동시 사용자 100명, 20초 동안 실시
 ```
-$ siege -c100 -t60S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status"="EduApplied"}'
+kubectl exec -it pod/siege -c siege -n edu -- /bin/bash
+$ siege -c100 -t20S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status": "EduApplied"}'
 ```	 
-![image]
+  ![image](https://user-images.githubusercontent.com/18115456/122666795-6ad79d80-d1ea-11eb-91c7-acdff9d8f20b.PNG)
+  ![image](https://user-images.githubusercontent.com/18115456/122666798-6dd28e00-d1ea-11eb-85ab-e86027b3e197.PNG)
 - 운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 하지만 실패율이 높은 것은 고객 사용성에 있어 좋지 않기 때문에 Retry 설정과 동적 Scale out (replica의 자동적 추가,HPA) 을 통하여 시스템을 확장 해주는 후속처리가 필요.
 ***
 
@@ -577,16 +579,16 @@ kubectl autoscale deploy payment --min=1 --max=10 --cpu-percent=15 -n edu
 ```	 
 - CB에서 했던 방식대로 워크로드를 2분 동안 걸어준다.
 ```
-$ siege -c100 -t120S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status"="EduApplied"}'
+kubectl exec -it pod/siege -c siege -n edu -- /bin/bash
+$ siege -c100 -t120S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status": "EduApplied"}'
 ```	
-- 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다.
+- 오토스케일 확인을 위해 모니터링을 걸어둔다.
 ```
-kubectl get deploy payment -w
+watch kubectl get all -n edu
 ```	 
-- 어느정도 시간이 흐른 후 (약 30초) 스케일 아웃이 벌어지는 것을 확인할 수 있다.  
-![image]
-- siege 레포트를 보아도 전체적인 성공률이 높아진 것을 확인할 수 있다.  
-![image]
+- 잠시 후 payment에 대해 스케일 아웃이 벌어지는 것을 확인할 수 있다.  
+![image](https://user-images.githubusercontent.com/18115456/122666954-387a7000-d1eb-11eb-88f4-42b4d103cc02.PNG)
+
 ***
 
 ## Config Map
@@ -607,15 +609,31 @@ kubectl get deploy payment -w
 
     ```sh
     kubectl create configmap paymenturl --from-literal=url=http://payment:8080 -n edu
+    kubectl get configmap paymenturl -o yaml -n edu
     ```
-    ![image]
+    ![image](https://user-images.githubusercontent.com/18115456/122667026-9dce6100-d1eb-11eb-9a2f-11e5fe81af64.PNG) 
+
+    app pod 환경변수도 확인
+    ```
+    kubectl exec -it pod/app-8cfc58b6f-lkxtz -n edu -- /bin/sh
+    $ env
+    ```
+    ![image](https://user-images.githubusercontent.com/18115456/122667620-b8560980-d1ee-11eb-84d1-272009f9ca5c.PNG)
 
 - configmap 삭제 후, 에러 확인  
 
-    ```sh
+    ```
     kubectl delete configmap paymenturl
     ```
-    ![image]  
+    <image src="https://user-images.githubusercontent.com/18115456/122667466-f69ef900-d1ed-11eb-9d48-8b0fc7f8c8a4.PNG" width="70%"/> 
+
+    <image src="https://user-images.githubusercontent.com/18115456/122667469-f7378f80-d1ed-11eb-95a3-420c4f8caeb2.PNG" width="100%"/>  
+
+    ```
+    kubectl describe pod app-8cfc58b6f-t96wv -n edu 
+    ```
+    <image src="https://user-images.githubusercontent.com/18115456/122667470-f7378f80-d1ed-11eb-9e0e-a78ef1449d20.PNG" width="100%"/>  
+
 
 ***
 
@@ -632,13 +650,25 @@ readinessProbe:
   failureThreshold: 10
 ```
 
-- deployment.yml에서 readiness 설정 제거 후, 배포중 siege 테스트 진행 - deployment_rm_readiness.yml  
-  ![image]  
+- readiness 설정 제거한 yml 파일(deployment_rm_readiness.yml)로 app deploy 다시 생성 후, siege 부하 테스트 실행해둔 뒤 재배포 진행    
+```
+#siege 테스트 
+kubectl exec -it pod/siege -c siege -n edu -- /bin/bash
+>> siege -c100 -t20S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status": "EduApplied"}'
 
-배포기간중 Availability 가 평소 100%에서 70% 대로 떨어지는 것을 확인. 원인은 쿠버네티스가 성급하게 새로 올려진 서비스를 READY 상태로 인식하여 서비스 유입을 진행한 것이기 때문. 이를 막기위해 Readiness Probe 를 설정함  
+# app 새버전으로의 배포 시작 (두 개 버전으로 버전 바꿔가면서 테스트)
+kubectl set image deployment app app=eunmi.azurecr.io/app:latest -n edu
+kubectl set image deployment app app=eunmi.azurecr.io/app:v1 -n edu
+```
+새 버전으로 배포되는 중 (구버전, 신버전 공존)  
+<image src="https://user-images.githubusercontent.com/18115456/122667742-6792e080-d1ef-11eb-9a76-1db02afb7925.PNG" width="80%"/>
+<image src="https://user-images.githubusercontent.com/18115456/122667746-68c40d80-d1ef-11eb-999a-137ee3a0a359.PNG" width="80%"/>
+<image src="https://user-images.githubusercontent.com/18115456/122667747-68c40d80-d1ef-11eb-8c47-f74957fa716f.PNG" width="50%"/>
 
-- 다시 readiness 정상 적용 후, Availability 100% 확인  
-![image]
+배포기간중 Availability 가 100%가 안 되는 것을 확인. 원인은 쿠버네티스가 성급하게 새로 올려진 서비스를 READY 상태로 인식하여 서비스 유입을 진행한 것이기 때문. 이를 막기 위해 Readiness Probe 를 설정함  
+
+- 다시 readiness 정상 적용 후(deployment.yml), Availability 100% 확인  
+![image](https://user-images.githubusercontent.com/18115456/122667961-a9705680-d1f0-11eb-9316-d4b1ae4b318a.PNG)  
 
 ***
 ## Self-healing - Liveness Probe
@@ -661,4 +691,5 @@ livenessProbe:
         ![image](https://user-images.githubusercontent.com/18115456/120985806-ed0d9e00-c7b6-11eb-834f-ffd2c627ecf0.png)
 
     - retry 시도 확인  
-        ![image]
+        ![liveness2-restarts](https://user-images.githubusercontent.com/18115456/122668002-e8061100-d1f0-11eb-8e54-dfa8618ac17d.PNG)
+
