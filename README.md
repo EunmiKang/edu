@@ -257,7 +257,23 @@ public interface EduApplicationRepository extends PagingAndSortingRepository<Edu
 }
 ```
 
-DDD 적용 후 REST API의 테스트를 통하여 정상적으로 동작하는 것을 확인할 수 있었다.
+DDD 적용 후 REST API의 테스트를 통하여 정상적으로 동작하는 것을 확인할 수 있었다.  
+
+1. 수강 신청
+<image src="https://user-images.githubusercontent.com/18115456/122668287-3f58b100-d1f2-11eb-9d74-e407813378d0.PNG" width="100%" />  
+2. 수강 등록된 것 확인 - mypage  
+<image src="https://user-images.githubusercontent.com/18115456/122668336-74fd9a00-d1f2-11eb-84ed-f442af3a71a1.PNG" width="50%" />  
+3. 결제된 것 확인 - payment  
+<image src="https://user-images.githubusercontent.com/18115456/122668338-75963080-d1f2-11eb-9a07-1e2ca665cbad.PNG" width="50%" />  
+4. 수강 완료  
+<image src="https://user-images.githubusercontent.com/18115456/122668369-a5ddcf00-d1f2-11eb-9971-b2524f574cbf.PNG" width="70%" />  
+5. 수강 취소  
+<image src="https://user-images.githubusercontent.com/18115456/122668391-d6256d80-d1f2-11eb-9592-a1ba8e2f8ab3.PNG" width="80%" />  
+6. 결제 취소된 것 확인  
+<image src="https://user-images.githubusercontent.com/18115456/122668396-d7569a80-d1f2-11eb-96e7-b853422f7e12.PNG" width="50%" />  
+참고) kafka 수신 캡쳐  
+<image src="https://user-images.githubusercontent.com/18115456/122668420-f5bc9600-d1f2-11eb-9eab-07708c545813.PNG" width="100%" />  
+
 ***
 ## Gateway 적용
 API GateWay를 통하여 마이크로 서비스들의 진입점을 통일할 수 있다. 
@@ -338,13 +354,18 @@ spring:
 server:
   port: 8080
 ```  
+
+- gateway 통해서 수강신청 후 마이페이지에서 상태 확인  
+<image src="https://user-images.githubusercontent.com/18115456/122668542-8b582580-d1f3-11eb-91d9-9def2e2b99ea.PNG" width="100%"/>  
+<image src="https://user-images.githubusercontent.com/18115456/122668471-27356180-d1f3-11eb-84d5-2993f1ffc717.PNG" width="50%"/>  
+
 ***
 ## CQRS
 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 수강 신청 내역 조회가 가능하게 구현해 두었다.
 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
 
 수강 신청 후 mypage 조회
-![image](https://user-images.githubusercontent.com/18115456/122647383-fb689c00-d15e-11eb-86a8-37a503a45bfd.PNG)
+<image src="https://user-images.githubusercontent.com/18115456/122668533-7da2a000-d1f3-11eb-8668-2ce20bfb90ab.PNG" width="50%" />
 <image src="https://user-images.githubusercontent.com/18115456/122647384-fc99c900-d15e-11eb-8e65-7c63617eaf63.PNG" width="50%" />
 *** 
 
@@ -384,7 +405,7 @@ public interface PaymentService {
 }
 ```
 
-app 서비스 내에서 pay() 호출
+app 서비스 내에서 pay 메소드 호출
 
 ```java
 edu.external.Payment payment = new edu.external.Payment();
@@ -552,10 +573,10 @@ hystrix:
         }
     }
 ```	 
-- 부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인 . 동시 사용자 100명, 20초 동안 실시
+- 부하 테스터 siege 툴을 통한 서킷 브레이커 동작 확인 . 동시 사용자 100명, 60초 동안 실시
 ```
 kubectl exec -it pod/siege -c siege -n edu -- /bin/bash
-$ siege -c100 -t20S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status": "EduApplied"}'
+$ siege -c100 -t60S -r10 -v --content-type "application/json" 'http://app:8080/eduApplications POST {"userId": "eunmi", "eduName": "MSA",  "eduId": 1, "status": "EduApplied"}'
 ```	 
   ![image](https://user-images.githubusercontent.com/18115456/122666795-6ad79d80-d1ea-11eb-91c7-acdff9d8f20b.PNG)
   ![image](https://user-images.githubusercontent.com/18115456/122666798-6dd28e00-d1ea-11eb-85ab-e86027b3e197.PNG)
@@ -613,7 +634,7 @@ watch kubectl get all -n edu
     ```
     ![image](https://user-images.githubusercontent.com/18115456/122667026-9dce6100-d1eb-11eb-9a2f-11e5fe81af64.PNG) 
 
-    app pod 환경변수도 확인
+    app pod 내부로 들어가서 환경변수도 확인
     ```
     kubectl exec -it pod/app-8cfc58b6f-lkxtz -n edu -- /bin/sh
     $ env
@@ -623,6 +644,7 @@ watch kubectl get all -n edu
 - configmap 삭제 후, 에러 확인  
 
     ```
+    #configmap 삭제
     kubectl delete configmap paymenturl
     ```
     <image src="https://user-images.githubusercontent.com/18115456/122667466-f69ef900-d1ed-11eb-9d48-8b0fc7f8c8a4.PNG" width="70%"/> 
@@ -693,3 +715,17 @@ livenessProbe:
     - retry 시도 확인  
         ![liveness2-restarts](https://user-images.githubusercontent.com/18115456/122668002-e8061100-d1f0-11eb-8e54-dfa8618ac17d.PNG)
 
+***  
+## 참고
+```
+# helm version 확인
+helm version
+
+# aks에 kafka 설치
+kubectl --namespace kube-system create sa tiller      # helm 의 설치관리자를 위한 시스템 사용자 생성
+kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
+helm repo add incubator https://charts.helm.sh/incubator
+helm repo update
+kubectl create ns kafka
+helm install my-kafka --namespace kafka incubator/kafka
+```
