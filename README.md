@@ -539,7 +539,7 @@ spec:
 ```	  
 
 - deploy 완료  
-![image] (https://user-images.githubusercontent.com/18115456/122666713-00266200-d1ea-11eb-83df-abf4127cabde.PNG)  
+![image](https://user-images.githubusercontent.com/18115456/122666713-00266200-d1ea-11eb-83df-abf4127cabde.PNG)  
 
 ***
 ## 동기식 호출 / 서킷 브레이킹 / 장애격리
