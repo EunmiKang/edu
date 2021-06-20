@@ -35,3 +35,8 @@ spec:
             timeoutSeconds: 2
             periodSeconds: 5
             failureThreshold: 5
+          resources:
+            requests:
+              cpu: 200m
+            limits:
+              cpu: 500m
