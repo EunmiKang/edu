@@ -441,31 +441,31 @@ kubectl config set-context --current --namespace=edu
 kubectl create ns edu
 
 cd app
-az acr build --registry eunmi-acr --image eunmi-acr.azurecr.io/app:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/app:v1 .
 cd kubernetes
 kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 
 cd payment
-az acr build --registry eunmi-acr --image eunmi-acr.azurecr.io/payment:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/payment:v1 .
 cd kubernetes
 kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 
 cd education
-az acr build --registry eunmi-acr --image eunmi-acr.azurecr.io/education:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/education:v1 .
 cd kubernetes
 kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 
 cd mypage
-az acr build --registry eunmi-acr --image eunmi-acr.azurecr.io/mypage:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/mypage:v1 .
 cd kubernetes
 kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 
 cd gateway
-az acr build --registry eunmi-acr --image eunmi-acr.azurecr.io/gateway:v1 .
+az acr build --registry eunmi --image eunmi.azurecr.io/gateway:v1 .
 cd kubernetes
 kubectl apply -f deployment.yml -n edu
 kubectl apply -f service.yaml
