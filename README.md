@@ -364,8 +364,8 @@ server:
 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 수강 신청 내역 조회가 가능하게 구현해 두었다.
 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
 
-수강 신청 후 mypage 조회
-<image src="https://user-images.githubusercontent.com/18115456/122668533-7da2a000-d1f3-11eb-8668-2ce20bfb90ab.PNG" width="50%" />
+수강 신청 후 mypage 조회  
+<image src="https://user-images.githubusercontent.com/18115456/122668533-7da2a000-d1f3-11eb-8668-2ce20bfb90ab.PNG" width="100%" />
 <image src="https://user-images.githubusercontent.com/18115456/122647384-fc99c900-d15e-11eb-8e65-7c63617eaf63.PNG" width="50%" />
 *** 
 
