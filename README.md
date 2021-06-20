@@ -57,7 +57,7 @@ git clone https://github.com/EunmiKang/edu.git
 ![image](https://user-images.githubusercontent.com/18115456/122647108-847ed380-d15d-11eb-9f83-9f335e9f61ca.PNG)
 
 ## 헥사고날 아키텍처 다이어그램 도출
-
+![image](https://user-images.githubusercontent.com/18115456/122661398-c0994f00-d1c4-11eb-9931-07f59599a9ec.PNG)
 ***
 # 구현
 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라,구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다
