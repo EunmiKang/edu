@@ -9,7 +9,7 @@ git clone https://github.com/EunmiKang/edu.git
 
 # 서비스 시나리오
 
-## 기능적 요구사항
+기능적 요구사항
 
 * 고객이 교육을 선택하여 수강 신청한다
 * 고객이 결제한다
@@ -20,13 +20,13 @@ git clone https://github.com/EunmiKang/edu.git
 * 고객은 교육신청내역을 조회할 수 있다  
 
 
-## 비기능적 요구사항
-* 트랜잭션
+비기능적 요구사항
+1. 트랜잭션
     * 결제가 되지 않은 신청 건은 아예 수강 신청이 성립되지 않아야 한다 (Sync 호출)
-* 장애격리
+2. 장애격리
     * 수강 기능이 수행되지 않더라도 수강 신청은 365일 24시간 받을 수 있어야 한다 Async(event-driven), Eventual Consistency
     * 결제시스템이 과중되면 사용자를 잠시동안 받지 않고 결제를 잠시후에 하도록 유도한다 Circuit breaker, fallback
-* 성능
+3. 성능
     * 고객이 마이페이지에서 수강 신청 내역을 조회할 수 있다 (CQRS)  
 ***
 # 분석/설계
