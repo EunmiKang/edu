@@ -530,7 +530,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: gateway
-  namespace: anticorona
+  namespace: edu
   labels:
     app: gateway
 spec:
