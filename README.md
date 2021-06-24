@@ -367,6 +367,10 @@ server:
 수강 신청 후 mypage 조회  
 <image src="https://user-images.githubusercontent.com/18115456/122668533-7da2a000-d1f3-11eb-8668-2ce20bfb90ab.PNG" width="100%" />
 <image src="https://user-images.githubusercontent.com/18115456/122647384-fc99c900-d15e-11eb-8e65-7c63617eaf63.PNG" width="50%" />
+
+수강 신청 취소 후 mypage 조회  
+<image src="https://user-images.githubusercontent.com/18115456/123195126-97d5ca00-d4e2-11eb-8f44-55dbc505fbe5.PNG" width="80%" />
+<image src="https://user-images.githubusercontent.com/18115456/123195128-986e6080-d4e2-11eb-90a6-968794b2e251.PNG" width="50%" />
 *** 
 
 ## 폴리글랏 퍼시스턴스
@@ -615,7 +619,7 @@ watch kubectl get all -n edu
 ## Config Map
 
 - 변경 가능성이 있는 설정을 ConfigMap을 사용하여 관리  
-  - app 서비스에서 바라보는 paynebt 서비스 url을 ConfigMap 사용하여 구현​  
+  - app 서비스에서 바라보는 payment 서비스 url을 ConfigMap 사용하여 구현​  
 
 - in app src (app/src/main/java/edu/external/PaymentService.java)  
     ![image](https://user-images.githubusercontent.com/18115456/122647963-e04b5b80-d161-11eb-9d8a-7e3d2fb24165.png)
