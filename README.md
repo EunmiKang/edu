@@ -241,7 +241,7 @@ public class PolicyHandler{
 
 ```
 
- app 서비스의 BookingRepository.java
+ app 서비스의 EduApplicationRepository.java
 
 
 ```java
